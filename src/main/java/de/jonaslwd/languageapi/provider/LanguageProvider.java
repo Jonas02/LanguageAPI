@@ -12,31 +12,45 @@ import java.io.FileNotFoundException;
 import java.io.FileReader;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
 
 public final class LanguageProvider implements LanguageAPI {
 
-    public static File DATA_FOLDER = new File( "languages" );
+    /* the instance of this class with a static getter */
+    @Getter
+    private static LanguageProvider provider;
 
-    private final List< MasterLanguageConfig > configs = new ArrayList<>(  );
+    /* This list contains each MasterLanguageConfiguration which were loaded */
+    private final List< MasterLanguageConfig > configs = new ArrayList<>( );
 
-    private final ExecutorService service = Executors.newCachedThreadPool( );
+    /* Gets the main directory which contains each language file */
+    @Getter
+    private File dataFolder;
 
+    /**
+     * Constructs this class and initializes the instance of folder object
+     *
+     * @param path This means the path of the main directory which will contain all language files
+     */
+    public LanguageProvider( final String path ) {
+        provider = this;
+        this.dataFolder = new File( path + "languages" );
+    }
+
+    /* The instance of the helper library Gson */
     @Getter
     private final Gson gson = new Gson( );
 
     @Override
     public void loadMessages( ) {
-        if ( !DATA_FOLDER.exists( ) ) {
-            DATA_FOLDER.mkdir( );
+        if ( !dataFolder.exists( ) ) {
+            dataFolder.mkdir( );
         }
 
-        if ( DATA_FOLDER.listFiles( ) == null || DATA_FOLDER.listFiles( ).length == 0 ) {
+        if ( dataFolder.listFiles( ) == null || dataFolder.listFiles( ).length == 0 ) {
             return;
         }
 
-        for ( final File eachFile : DATA_FOLDER.listFiles( ) ) {
+        for ( final File eachFile : dataFolder.listFiles( ) ) {
             try {
                 final MasterLanguageConfig config = gson.fromJson( new FileReader( eachFile ), MasterLanguageConfig.class );
 
@@ -51,16 +65,20 @@ public final class LanguageProvider implements LanguageAPI {
 
     @Override
     public void addMessage( final ConfigLanguage language, final ConfigMessage message, final boolean save ) {
-        service.execute( ( ) -> {
-            for ( final MasterLanguageConfig configs : configs ) {
-                if ( configs.getConfigLanguage( ) == language ) {
-                    configs.addMessage( message );
+        if ( !configs.contains( language ) ) {
+            final MasterLanguageConfig config = new MasterLanguageConfig( language );
 
-                    if ( save )
-                        configs.save( );
-                }
+            config.save( );
+            configs.add( config );
+        }
+        for ( final MasterLanguageConfig configs : configs ) {
+            if ( configs.getConfigLanguage( ).getShortForm( ).equalsIgnoreCase( language.getShortForm( ) )
+                    && language.getName( ).equalsIgnoreCase( configs.getConfigLanguage( ).getName( ) ) ) {
+                configs.addMessage( message );
+                if ( save )
+                    configs.save( );
             }
-        } );
+        }
     }
 
     @Override

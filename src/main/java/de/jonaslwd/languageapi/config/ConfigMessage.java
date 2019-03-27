@@ -7,7 +7,9 @@ import lombok.Data;
 @AllArgsConstructor
 public class ConfigMessage {
 
+    /* The path of this message  */
     private final String path;
 
+    /* The text of this message */
     private String message;
 }
